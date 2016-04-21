@@ -18,7 +18,7 @@
 void fifo_init(stc_fifo_t* fifo,char* buffer)
 {
     fifo->buffer = buffer;
-	fifo_clear(fifo);
+    fifo_clear(fifo);
 }
 
 void fifo_clear(stc_fifo_t* fifo)
