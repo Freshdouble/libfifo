@@ -20,14 +20,15 @@
 
 typedef struct stc_fifo_s
 {
-	char buffer[FIFO_BUFFER_SIZE];
+	char *buffer;
 	uint16_t head;
 	uint16_t tail;
 }stc_fifo_t;
 
 // ===== DECLARATIONS =====
 
-void fifo_init(stc_fifo_t* fifo);
+void fifo_init(stc_fifo_t* fifo,char* buffer);
+void fifo_clear(stc_fifo_t* fifo);
 uint8_t fifo_empty(stc_fifo_t* fifo);
 uint8_t fifo_full(stc_fifo_t* fifo);
 uint8_t fifo_read_char(char *c,stc_fifo_t* fifo);

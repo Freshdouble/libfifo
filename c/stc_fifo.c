@@ -15,10 +15,16 @@
 /**
  * @brief initialize fifo structure
  */
-void fifo_init(stc_fifo_t* fifo)
+void fifo_init(stc_fifo_t* fifo,char* buffer)
 {
-	fifo->head = 0;
-	fifo->tail = 0;
+    fifo->buffer = buffer;
+	fifo_clear(fifo);
+}
+
+void fifo_clear(stc_fifo_t* fifo)
+{
+    fifo->head = 0;
+    fifo->tail = 0;
 }
 
 /**
