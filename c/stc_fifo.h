@@ -19,7 +19,7 @@
 
 typedef struct stc_fifo_s
 {
-	char *buffer;
+	uint8_t *buffer;
 	uint16_t head;
 	uint16_t tail;
 #ifdef BINARY_FIFO
@@ -31,13 +31,17 @@ typedef struct stc_fifo_s
 
 // ===== DECLARATIONS =====
 
-void fifo_init(stc_fifo_t* fifo,char* buffer);
+void fifo_init(stc_fifo_t* fifo,void* buffer);
 void fifo_clear(stc_fifo_t* fifo);
 uint8_t fifo_empty(stc_fifo_t* fifo);
 uint8_t fifo_full(stc_fifo_t* fifo);
-uint8_t fifo_read_char(char *c,stc_fifo_t* fifo);
+uint16_t fifo_datasize(stc_fifo_t* fifo);
+uint16_t fifo_free_space(stc_fifo_t* fifo);
+uint8_t fifo_read_char(uint8_t *c,stc_fifo_t* fifo);
 uint32_t fifo_read(uint8_t *buffer, uint32_t number,stc_fifo_t* fifo);
-uint8_t fifo_write_char(char c, stc_fifo_t* fifo);
-uint32_t fifo_write(char* buffer, uint32_t number,stc_fifo_t* fifo);
+uint32_t fifo_read_object(void *object, uint32_t size, stc_fifo_t* fifo);
+uint8_t fifo_write_char(uint8_t c, stc_fifo_t* fifo);
+uint32_t fifo_write(uint8_t* buffer, uint32_t number,stc_fifo_t* fifo);
+uint32_t fifo_write_data(void* data, uint32_t number, stc_fifo_t *fifo);
 
 #endif

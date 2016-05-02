@@ -15,9 +15,9 @@
 /**
  * @brief initialize fifo structure
  */
-void fifo_init(stc_fifo_t* fifo,uint8_t* buffer)
+void fifo_init(stc_fifo_t* fifo,void* buffer)
 {
-    fifo->buffer = buffer;
+    fifo->buffer = (uint8_t*)buffer;
     fifo_clear(fifo);
 }
 
@@ -122,7 +122,7 @@ uint32_t fifo_read(uint8_t *buffer, uint32_t number,stc_fifo_t* fifo)
 	uint32_t i;
 	for (i=0; i<number; i++)
 	{
-		if (!fifo_read_char((char *)(buffer + i), fifo))
+		if (!fifo_read_char((uint8_t *)(buffer + i), fifo))
 			break;
 	}
 	return i;
@@ -135,7 +135,6 @@ uint32_t fifo_read(uint8_t *buffer, uint32_t number,stc_fifo_t* fifo)
  */
 uint32_t fifo_read_object(void *object, uint32_t size, stc_fifo_t* fifo)
 {
-	uint32_t i;
 	uint8_t *buffer = (uint8_t *)object;
 
 	if(fifo_datasize(fifo) < size)
@@ -191,7 +190,7 @@ uint32_t fifo_write(uint8_t* buffer, uint32_t number,stc_fifo_t* fifo)
  */
 uint32_t fifo_write_data(void* data, uint32_t number, stc_fifo_t *fifo)
 {
-	char *buffer = (char *)data;
+	uint8_t *buffer = (uint8_t *)data;
 
 	if(fifo_free_space(fifo) < number)
 		return 0;
