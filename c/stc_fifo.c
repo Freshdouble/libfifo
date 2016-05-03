@@ -60,9 +60,9 @@ uint8_t fifo_full(stc_fifo_t* fifo)
 }
 
 /*
- * @brief get bytes in the fifo
+ * @brief get objects in the fifo
  *
- * Returns number of bytes in the fifo.
+ * Returns number of objects in the fifo.
  */
 uint16_t fifo_datasize(stc_fifo_t* fifo)
 {
@@ -82,7 +82,7 @@ uint16_t fifo_datasize(stc_fifo_t* fifo)
 /*
  * @brief get free space of fifo
  *
- * Returns number of free bytes in the fifo.
+ * Returns number of free objects (n * objectsize) in the fifo.
  */
 uint16_t fifo_free_space(stc_fifo_t* fifo)
 {
@@ -94,15 +94,38 @@ uint16_t fifo_free_space(stc_fifo_t* fifo)
 }
 
 /**
- * @brief read 1 char from the fifo
- * returns 0 if fifo is empty, 1 otherwise.
+ * @brief returns a pointer to the nth object in the fifo
+ *
+ * Returns a pointer to the nth object in the fifo. If number is greater than
+ * the number of objects in the fifo number will be wrapped to adress a valid object in the
+ * fifo.
+ * If the fifo is empty this function returns 0
  */
-uint8_t fifo_read_char(uint8_t *c,stc_fifo_t* fifo)
+void* fifo_get_nth_Object(uint8_t number, stc_fifo_t* fifo)
 {
 	if(fifo_empty(fifo))
 		return 0;
 
-	*c = fifo->buffer[fifo->head];
+	number = number % fifo_datasize(fifo);
+	return (void*)&fifo->buffer[(fifo->head + number) * fifo->objectSize];
+}
+
+/**
+ * @brief read 1 byte from the fifo
+ * returns 0 if fifo is empty, 1 otherwise.
+ */
+uint8_t fifo_read_object(void *object,stc_fifo_t* fifo)
+{
+	uint8_t i;
+	uint8_t *memory = (uint8_t *)object;
+	uint32_t fifoOffset = fifo->head * fifo->objectSize; //Calculate real number of bytes
+	if(fifo_empty(fifo))
+		return 0;
+
+	for(i = 0; i < fifo->objectSize; i++)
+	{
+		memory[i] = fifo->buffer[fifoOffset + i];
+	}
 #ifdef BINARY_FIFO
 	fifo->head = (fifo->head + 1) & fifo->bitmask;
 #else
@@ -112,50 +135,42 @@ uint8_t fifo_read_char(uint8_t *c,stc_fifo_t* fifo)
 }
 
 /*
- * @brief read n bytes from fifo
+ * @brief read n objects from fifo
  *
- * Read arbitrary number of chars from fifo.
- * Returns the number of characters successfully read.
+ * Read arbitrary number of objects from fifo.
+ * Returns the number of objects successfully read.
  */
-uint32_t fifo_read(uint8_t *buffer, uint32_t number,stc_fifo_t* fifo)
+uint32_t fifo_read(void *buffer, uint32_t number,stc_fifo_t* fifo)
 {
 	uint32_t i;
+	uint8_t *memory = (uint8_t*)buffer;
 	for (i=0; i<number; i++)
 	{
-		if (!fifo_read_char((uint8_t *)(buffer + i), fifo))
+		if (!fifo_read_object(&memory[i*fifo->objectSize], fifo))
 			break;
 	}
 	return i;
 }
 
 /*
- * @brief read an user defined object from the buffer
+ * @brief write object in fifo
  *
- * Returns the number of bytes successfully read.
+ * Writes a new object into fifo.
+ *
+ * Returns 1 if object successfully appended to fifo, 0 otherwise.
  */
-uint32_t fifo_read_object(void *object, uint32_t size, stc_fifo_t* fifo)
+uint8_t fifo_write_object(void *object, stc_fifo_t* fifo)
 {
-	uint8_t *buffer = (uint8_t *)object;
-
-	if(fifo_datasize(fifo) < size)
-		return 0;
-
-	return fifo_read(buffer, size, fifo);
-}
-
-/*
- * @brief write char in fifo
- *
- * Writes a new char into fifo.
- *
- * Returns 1 if char successfully appended to fifo, 0 otherwise.
- */
-uint8_t fifo_write_char(uint8_t c, stc_fifo_t* fifo)
-{
+	uint8_t i;
+	uint32_t fifoOffset = fifo->tail * fifo->objectSize;
+	uint8_t *memory = (uint8_t*)object;
 	if(fifo_full(fifo))
 		return 0;
 
-	fifo->buffer[fifo->tail] = c;
+	for(i = 0; i < fifo->objectSize; i++)
+	{
+		fifo->buffer[fifoOffset + i] = memory[i];
+	}
 #ifdef BINARY_FIFO
 	fifo->tail = (fifo->tail + 1) & fifo->bitmask;
 #else
@@ -165,35 +180,22 @@ uint8_t fifo_write_char(uint8_t c, stc_fifo_t* fifo)
 }
 
 /*
- * @brief write n chars in fifo
+ * @brief write n objects in fifo
  *
- * Write arbitrary number of chars into fifo.
+ * Write arbitrary number of objects into fifo.
  *
- * Returns the number of chars successfully written.
+ * Returns the number of objects successfully written.
  */
-uint32_t fifo_write(uint8_t* buffer, uint32_t number,stc_fifo_t* fifo)
+uint32_t fifo_write(void* buffer, uint32_t number,stc_fifo_t* fifo)
 {
 	uint32_t i;
+	uint8_t *memory = (uint8_t *)buffer;
+
 	for(i=0; i<number; i++)
 	{
-		if(!fifo_write_char(buffer[i], fifo))
+		if(!fifo_write_object(&memory[fifo->objectSize*i], fifo))
 			break;
 	}
 
 	return i;
-}
-
-/*
- * @brief write a user defined object to the buffer
- *
- * Returns the number of bytes successfully written.
- */
-uint32_t fifo_write_data(void* data, uint32_t number, stc_fifo_t *fifo)
-{
-	uint8_t *buffer = (uint8_t *)data;
-
-	if(fifo_free_space(fifo) < number)
-		return 0;
-
-	return fifo_write(buffer,number,fifo);
 }
