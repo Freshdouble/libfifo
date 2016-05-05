@@ -15,23 +15,11 @@
 /**
  * @brief initialize fifo structure
  */
-#ifdef BINARY_FIFO
-void fifo_init(stc_fifo_t* fifo, void* buffer, uint16_t bitmask, uint8_t objectSize)
+void fifo_init(stc_fifo_t* fifo,void* buffer)
 {
     fifo->buffer = (uint8_t*)buffer;
-    fifo->objectSize = objectSize;
-    fifo->bitmask = bitmask;
     fifo_clear(fifo);
 }
-#else
-void fifo_init(stc_fifo_t* fifo, void* buffer, uint16_t buffersize, uint8_t objectSize)
-{
-    fifo->buffer = (uint8_t*)buffer;
-    fifo->objectSize = objectSize;
-    fifo->buffersize = buffersize;
-    fifo_clear(fifo);
-}
-#endif
 
 void fifo_clear(stc_fifo_t* fifo)
 {
@@ -123,45 +111,6 @@ void* fifo_get_nth_Object(uint8_t number, stc_fifo_t* fifo)
 }
 
 /**
- * @brief deletes first object in the fifo
- *
- * Returns 1 if object has been removed, 0 if no object has been removed
- * because the fifo is empty
- */
-uint8_t fifo_delete_object(stc_fifo_t* fifo)
-{
-	if(!fifo_empty(fifo))
-	{
-#ifdef BINARY_FIFO
-		fifo->head = (fifo->head + 1) & fifo->bitmask;
-#else
-		fifo->head = (fifo->head + 1) % fifo->buffersize;
-#endif
-		return 1;
-	}
-	return 0;
-}
-
-/**
- * @brief deletes n objects in the fifo
- *
- * Returns the number of removed objects
- */
-uint8_t fifo_delete_n_Objects(uint8_t number, stc_fifo_t* fifo)
-{
-	int i;
-	for(i = 0; i < number; i++)
-	{
-		if(!fifo_delete_object(fifo))
-		{
-			break;
-		}
-	}
-
-	return i;
-}
-
-/**
  * @brief read 1 byte from the fifo
  * returns 0 if fifo is empty, 1 otherwise.
  */
@@ -177,7 +126,11 @@ uint8_t fifo_read_object(void *object,stc_fifo_t* fifo)
 	{
 		memory[i] = fifo->buffer[fifoOffset + i];
 	}
-	fifo_delete_object(fifo);
+#ifdef BINARY_FIFO
+	fifo->head = (fifo->head + 1) & fifo->bitmask;
+#else
+	fifo->head = (fifo->head + 1) % fifo->buffersize;
+#endif
 	return 1;
 }
 
