@@ -32,12 +32,19 @@ typedef struct stc_fifo_s
 
 // ===== DECLARATIONS =====
 
-void fifo_init(stc_fifo_t* fifo,void* buffer);
+#ifdef BINARY_FIFO
+void fifo_init(stc_fifo_t* fifo, void* buffer, uint16_t bitmask, uint8_t objectSize)
+#else
+void fifo_init(stc_fifo_t* fifo, void* buffer, uint16_t buffersize, uint8_t objectSize);
+#endif
 void fifo_clear(stc_fifo_t* fifo);
 uint8_t fifo_empty(stc_fifo_t* fifo);
 uint8_t fifo_full(stc_fifo_t* fifo);
 uint16_t fifo_datasize(stc_fifo_t* fifo);
 uint16_t fifo_free_space(stc_fifo_t* fifo);
+void* fifo_get_nth_Object(uint8_t number, stc_fifo_t* fifo);
+uint8_t fifo_delete_object(stc_fifo_t* fifo);
+uint8_t fifo_delete_n_Objects(uint8_t number, stc_fifo_t* fifo);
 uint8_t fifo_read_object(void *object,stc_fifo_t* fifo);
 uint32_t fifo_read(void *buffer, uint32_t number,stc_fifo_t* fifo);
 uint8_t fifo_write_object(void *object, stc_fifo_t* fifo);
