@@ -1,5 +1,5 @@
 /*
- * @file stc_fifo.h
+ * @file libfifo.h
  *
  * Includes basic structures to use with circular buffer fifo structures
  *
@@ -7,8 +7,8 @@
  *  Author: Peter
  */
 
-#ifndef STC_FIFO_H_
-#define STC_FIFO_H_
+#ifndef LIBFIFO_H_
+#define LIBFIFO_H_
 
 // ===== INCLUDES =====
 #include <stdint.h>

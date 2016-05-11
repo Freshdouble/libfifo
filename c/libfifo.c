@@ -1,5 +1,5 @@
 /*
-* @file stc_fifo.c
+* @file libfifo.c
 *
 * Basic functions for circular buffer fifo structures
 *
