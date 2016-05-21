@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 //#define BINARY_FIFO
+#define GET_BUFFER_SIZE(realsize) (realsize + 1)
 
 // ===== STRUCTS =====
 
@@ -32,12 +33,7 @@ typedef struct stc_fifo_s
 
 // ===== DECLARATIONS =====
 
-#ifdef BINARY_FIFO
-void fifo_init(fifo_t* fifo, void* buffer, uint16_t bitmask, uint8_t objectSize)
-#else
-void fifo_init(fifo_t* fifo, void* buffer, uint16_t buffersize,
-		uint8_t objectSize);
-#endif
+char fifo_init(fifo_t* fifo, void* buffer, uint16_t buffersize,uint8_t objectSize);
 void fifo_clear(fifo_t* fifo);
 uint8_t fifo_empty(fifo_t* fifo);
 uint8_t fifo_full(fifo_t* fifo);

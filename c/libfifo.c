@@ -7,31 +7,41 @@
  *      Author: Peter
  */
 
-#include "stc_fifo.h"
+#include "libfifo.h"
+#ifdef BINARY_FIFO
+#include "math.h"
+#endif
 
 // ===== DEFINITIONS =====
 
 /**
  * @brief initialize fifo structure
  */
-#ifdef BINARY_FIFO
-void fifo_init(fifo_t* fifo, void* buffer, uint16_t bitmask, uint8_t objectSize)
-{
-	fifo->buffer = (uint8_t*)buffer;
-	fifo->objectSize = objectSize;
-	fifo->bitmask = bitmask;
-	fifo_clear(fifo);
-}
-#else
-void fifo_init(fifo_t* fifo, void* buffer, uint16_t buffersize,
-		uint8_t objectSize)
+char fifo_init(fifo_t* fifo, void* buffer, uint16_t buffersize,uint8_t objectSize)
 {
 	fifo->buffer = (uint8_t*) buffer;
 	fifo->objectSize = objectSize;
+	if(buffersize == 0)
+		return -1;
+#ifdef BINARY_FIFO
+	unsigned char bits;
+	unsigned char bitmask = buffersize-1;
+	while(bitmask != 0)
+	{
+		bits++;
+		bitmask = bitmask >> 1;
+	}
+	uint16_t  calcsize = (pow(2,bits));
+	if(calcsize != buffersize)
+		return -1; //Buffersize is not 2^n
+	fifo->bitmask = buffersize-1;
+#else
 	fifo->buffersize = buffersize;
-	fifo_clear(fifo);
-}
 #endif
+
+	fifo_clear(fifo);
+	return 0;
+}
 
 void fifo_clear(fifo_t* fifo)
 {
@@ -165,7 +175,7 @@ uint8_t fifo_delete_n_Objects(uint8_t number, fifo_t* fifo)
  * @brief read 1 byte from the fifo
  * returns 0 if fifo is empty, 1 otherwise.
  */
-uint8_t fifo_read_object(void *object, fifo_t* fifo)
+inline uint8_t fifo_read_object(void *object, fifo_t* fifo)
 {
 	uint8_t i;
 	uint8_t *memory = (uint8_t *) object;
@@ -206,7 +216,7 @@ uint32_t fifo_read(void *buffer, uint32_t number, fifo_t* fifo)
  *
  * Returns 1 if object successfully appended to fifo, 0 otherwise.
  */
-uint8_t fifo_write_object(void *object, fifo_t* fifo)
+inline uint8_t fifo_write_object(void *object, fifo_t* fifo)
 {
 	uint8_t i;
 	uint32_t fifoOffset = fifo->tail * fifo->objectSize;
