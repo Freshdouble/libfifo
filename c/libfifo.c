@@ -14,142 +14,131 @@
 
 // ===== DEFINITIONS =====
 
+//======Private Functions======
+static uint16_t getFifoPtr(uint16_t current, int32_t offset,const fifo_t* fifo)
+{
+    int32_t newPtr = current + offset;
+    if(newPtr < 0)
+    {
+        return newPtr + fifo->buffersize;
+    }
+    else
+        return newPtr % fifo->buffersize;
+}
+
+static uint32_t min(uint32_t number1, uint32_t number2)
+{
+    if(number1 <= number2)
+        return number1;
+    else
+        return number2;
+}
+
+//======Public Functions========
+
 /**
  * @brief initialize fifo structure
  */
-char fifo_init(fifo_t* fifo, void* buffer, uint16_t buffersize,uint8_t objectSize)
+uint8_t fifo_init(fifo_t* fifo, uint8_t* buffer, uint16_t buffersize)
 {
-	fifo->buffer = (uint8_t*) buffer;
-	fifo->objectSize = objectSize;
-	if(buffersize == 0)
-		return -1;
-#ifdef BINARY_FIFO
-	unsigned char bits;
-	unsigned char bitmask = buffersize-1;
-	while(bitmask != 0)
-	{
-		bits++;
-		bitmask = bitmask >> 1;
-	}
-	uint16_t  calcsize = (pow(2,bits));
-	if(calcsize != buffersize)
-		return -1; //Buffersize is not 2^n
-	fifo->bitmask = buffersize-1;
-#else
-	fifo->buffersize = buffersize;
-#endif
-
-	fifo_clear(fifo);
-	return 0;
+    fifo->buffer = buffer;
+    fifo->buffersize = buffersize;
+    fifo_clear(fifo);
+    return 0;
 }
 
+/**
+* @brief Clear the fifo
+* Deletes all data in the fifo
+*/
 void fifo_clear(fifo_t* fifo)
 {
-	fifo->head = 0;
-	fifo->tail = 0;
+    fifo->head = 0;
+    fifo->tail = 0;
 }
 
 /**
  * @brief check if fifo ist empty
  * returns 1 if fifo is empty, 0 otherwise.
  */
-uint8_t fifo_empty(fifo_t* fifo)
+uint8_t fifo_empty(const fifo_t* fifo)
 {
-	if (fifo->head == fifo->tail)
-		return 1;
-	return 0;
+    if (fifo->head == fifo->tail)
+        return 1;
+    return 0;
 }
 
-/*
- * @check if fifo ist full
+/**
+ * @brief check if fifo is full
  *
  * Returns 1 if fifo is full, 0 otherwise.
  */
-uint8_t fifo_full(fifo_t* fifo)
+uint8_t fifo_full(const fifo_t* fifo)
 {
-#ifdef BINARY_FIFO
-	if(((fifo->tail + 1) & fifo->bitmask) == fifo->head)
-	{
-		return 1;
-	}
-#else
-	if (((fifo->tail + 1) % fifo->buffersize) == fifo->head)
-	{
-		return 1;
-	}
-#endif
-	return 0;
+    if (getFifoPtr(fifo->tail,1,fifo) == fifo->head)
+    {
+        return 1;
+    }
+    return 0;
 }
 
-/*
- * @brief get objects in the fifo
+/**
+ * @brief get bytes in the fifo
  *
- * Returns number of objects in the fifo.
+ * Returns number of bytes in the fifo.
  */
-uint16_t fifo_datasize(fifo_t* fifo)
+uint32_t fifo_datasize(const fifo_t* fifo)
 {
-	int size;
-	size = fifo->head - fifo->tail;
-	if (size < 0)
-	{
-#ifdef BINARY_FIFO
-		size += fifo->bitmask + 1;
-#else
-		size += fifo->buffersize;
-#endif
-	}
-	return (uint16_t) size;
+    int64_t size;
+    size = fifo->tail - fifo->head;
+    if (size < 0)
+    {
+        size += fifo->buffersize;
+    }
+    return (uint32_t) size;
 }
 
-/*
+/**
+* @brief Returns the number of saved objects in the fifo
+*/
+uint32_t fifo_saved_objects(const fifo_t* fifo, uint32_t objectSize)
+{
+    return fifo_datasize(fifo)/objectSize;
+}
+
+/**
+ * @brief get free space of fifo
+ *
+ * Returns number of free bytes.
+ */
+uint32_t fifo_free_space(const fifo_t* fifo)
+{
+    return fifo->buffersize - fifo_datasize(fifo) - 1;
+}
+
+/**
  * @brief get free space of fifo
  *
  * Returns number of free objects (n * objectsize) in the fifo.
  */
-uint16_t fifo_free_space(fifo_t* fifo)
+uint32_t fifo_free_objects(const fifo_t* fifo, uint32_t objectSize)
 {
-#ifdef BINARY_FIFO
-	return (fifo->bitmask + 1) - fifo_datasize(fifo);
-#else
-	return fifo->buffersize - fifo_datasize(fifo);
-#endif
-}
-
-/**
- * @brief returns a pointer to the nth object in the fifo
- *
- * Returns a pointer to the nth object in the fifo. If number is greater than
- * the number of objects in the fifo number will be wrapped to adress a valid object in the
- * fifo.
- * If the fifo is empty this function returns 0
- */
-void* fifo_get_nth_Object(uint8_t number, fifo_t* fifo)
-{
-	if (fifo_empty(fifo))
-		return 0;
-
-	number = number % fifo_datasize(fifo);
-	return (void*) &fifo->buffer[(fifo->head + number) * fifo->objectSize];
+    return fifo_free_space(fifo)/objectSize;
 }
 
 /**
  * @brief deletes first object in the fifo
  *
  * Returns 1 if object has been removed, 0 if no object has been removed
- * because the fifo is empty
  */
-uint8_t fifo_delete_object(fifo_t* fifo)
+uint8_t fifo_delete_object(fifo_t* fifo, uint32_t objectSize)
 {
-	if (!fifo_empty(fifo))
-	{
-#ifdef BINARY_FIFO
-		fifo->head = (fifo->head + 1) & fifo->bitmask;
-#else
-		fifo->head = (fifo->head + 1) % fifo->buffersize;
-#endif
-		return 1;
-	}
-	return 0;
+    if (!fifo_empty(fifo))
+    {
+        fifo->head = getFifoPtr(fifo->head,objectSize,fifo);
+        return 1;
+    }
+    return 0;
 }
 
 /**
@@ -157,102 +146,192 @@ uint8_t fifo_delete_object(fifo_t* fifo)
  *
  * Returns the number of removed objects
  */
-uint8_t fifo_delete_n_Objects(uint8_t number, fifo_t* fifo)
+uint8_t fifo_delete_n_Objects(uint32_t number, fifo_t* fifo, uint32_t objectSize)
 {
-	int i;
-	for (i = 0; i < number; i++)
-	{
-		if (!fifo_delete_object(fifo))
-		{
-			break;
-		}
-	}
+    uint32_t i;
+    for (i = 0; i < number; i++)
+    {
+        if (!fifo_delete_object(fifo,objectSize))
+        {
+            break;
+        }
+    }
 
-	return i;
+    return i;
+}
+
+void fifo_delete_bytes(uint32_t number, fifo_t* fifo)
+{
+	if(number == 0)
+		return;
+	
+	number = min(number,fifo_datasize(fifo)); 
+	
+	fifo->head = getFifoPtr(fifo->head,number,fifo);
+	
+	if (fifo->tail == fifo->head)
+		fifo->tail = fifo->head = 0;
 }
 
 /**
- * @brief read 1 byte from the fifo
- * returns 0 if fifo is empty, 1 otherwise.
- */
-inline uint8_t fifo_read_object(void *object, fifo_t* fifo)
+* @brief reads bytes from the fifo but doesn't delete them
+* Reads number bytes from the fifo and returns the number of bytes that had been read.
+* This function just reads the data and doesn't delete it, so fifo pointers are not changed.
+*/
+uint32_t fifo_peak_bytes(uint8_t *buffer,const fifo_t* fifo, uint32_t number)
 {
-	uint8_t i;
-	uint8_t *memory = (uint8_t *) object;
-	uint32_t fifoOffset = fifo->head * fifo->objectSize; //Calculate real number of bytes
-	if (fifo_empty(fifo))
-		return 0;
+	number = min(number, fifo_datasize(fifo));
 
-	for (i = 0; i < fifo->objectSize; i++)
-	{
-		memory[i] = fifo->buffer[fifoOffset + i];
-	}
-	fifo_delete_object(fifo);
+    unsigned int l;
+
+    /*
+     * first get the data from fifo->head until the end of the buffer
+     */
+    l = min(number, fifo->buffersize - getFifoPtr(fifo->head,0,fifo));
+    MEMCPYFUNCTION(buffer, fifo->buffer + getFifoPtr(fifo->head,0,fifo), l);
+
+    /*
+     * then get the rest (if any) from the beginning of the buffer
+     */
+    MEMCPYFUNCTION(buffer + l, fifo->buffer, number - l);
+	
+	return number;
+}
+
+/**
+ * @brief read n objects from fifo with offset, but do net delete them
+ *
+ * Read arbitrary number of objects from fifo with a specified offset.
+ * Returns the number of objects successfully read.
+ * If offset + number is greater than number of bytes in the fifo this function returns 0.
+ * This function does not delete the objects from the fifo, so pointers are not changed
+ */
+uint32_t fifo_peak_bytes_offset(uint8_t *buffer, uint32_t offset, const fifo_t* fifo, uint32_t number)
+{
+    uint32_t datasize = fifo_datasize(fifo);
+    if(datasize < (offset + number))
+        return 0;
+    fifo_t tmpFifo = *fifo;
+    tmpFifo.head = getFifoPtr(tmpFifo.head,offset,&tmpfifo);
+    return fifo_peak_bytes(buffer,&tmpFifo,number);
+}
+
+/**
+ * @brief read n objects from fifo with offset, but do net delete them
+ *
+ * Read arbitrary number of objects from fifo with a specified offset.
+ * Returns the number of objects successfully read.
+ * This function does not delete the objects from the fifo, so pointers are not changed
+ */
+uint32_t fifo_peak_offset(void *buffer, uint32_t offset, const fifo_t* fifo, uint32_t number, uint32_t objectSize)
+{
+    return fifo_peak_bytes_offset(buffer,offset * objectSize,fifo,number * objectSize);
+}
+
+/**
+* @brief reads bytes from the fifo
+* Reads number bytes from the fifo and returns the number of bytes that had been read
+*/
+uint32_t fifo_read_bytes(uint8_t* buffer, fifo_t* fifo, uint32_t number)
+{
+	number = fifo_peak_bytes(buffer,fifo,number);
+    fifo_delete_bytes(number,fifo);
+
+    return number;
+}
+
+/************************************************************************/
+/* @brief read one byte to the fifo                                     */
+/* This function reads one data byte from the fifo and returns 1 if the */
+/* operation was successful, 0 otherwise                                */
+/* @return unint8_t														*/
+/************************************************************************/
+uint8_t fifo_read_byte(uint8_t* var, fifo_t* fifo)
+{
+	if(fifo_empty(fifo))
+		return 0;
+	
+	*var = fifo->buffer[fifo->head];
+	fifo->head = getFifoPtr(fifo->head,1,fifo);
 	return 1;
 }
 
-/*
+/**
+ * @brief read n objects from fifo, but do net delete them
+ *
+ * Read arbitrary number of objects from fifo.
+ * Returns the number of objects successfully read.
+ * This function does not delete the objects from the fifo, so pointers are not changed
+ */
+uint32_t fifo_peak(void *buffer, uint32_t number,const fifo_t* fifo, uint32_t objectSize)
+{
+    uint32_t readedBytes = fifo_peak_bytes(buffer,fifo,objectSize*number);
+    return readedBytes/objectSize;
+}
+
+/**
  * @brief read n objects from fifo
  *
  * Read arbitrary number of objects from fifo.
  * Returns the number of objects successfully read.
  */
-uint32_t fifo_read(void *buffer, uint32_t number, fifo_t* fifo)
+uint32_t fifo_read(void *buffer, uint32_t number, fifo_t* fifo, uint32_t objectSize)
 {
-	uint32_t i;
-	uint8_t *memory = (uint8_t*) buffer;
-	for (i = 0; i < number; i++)
-	{
-		if (!fifo_read_object(&memory[i * fifo->objectSize], fifo))
-			break;
-	}
-	return i;
+    uint32_t readedBytes = fifo_read_bytes(buffer,fifo,objectSize*number);
+    return readedBytes/objectSize;
 }
 
-/*
- * @brief write object in fifo
- *
- * Writes a new object into fifo.
- *
- * Returns 1 if object successfully appended to fifo, 0 otherwise.
- */
-inline uint8_t fifo_write_object(void *object, fifo_t* fifo)
+
+/**
+* @brief write bytes to the fifo
+* Writes number bytes to the fifo and returns the number of bytes that had been written
+*/
+uint32_t fifo_write_bytes(const uint8_t* buffer, fifo_t* fifo, uint32_t number)
 {
-	uint8_t i;
-	uint32_t fifoOffset = fifo->tail * fifo->objectSize;
-	uint8_t *memory = (uint8_t*) object;
-	if (fifo_full(fifo))
+    unsigned int l;
+	
+	if(fifo_full(fifo))
 		return 0;
 
-	for (i = 0; i < fifo->objectSize; i++)
-	{
-		fifo->buffer[fifoOffset + i] = memory[i];
-	}
-#ifdef BINARY_FIFO
-	fifo->tail = (fifo->tail + 1) & fifo->bitmask;
-#else
-	fifo->tail = (fifo->tail + 1) % fifo->buffersize;
-#endif
+    number = min(number, fifo_free_space(fifo));
+
+    /* first put the data starting from fifo->in to buffer end */
+    l = min(number, fifo->buffersize - getFifoPtr(fifo->tail,0,fifo));
+    MEMCPYFUNCTION(fifo->buffer + getFifoPtr(fifo->tail,0,fifo), buffer, l);
+
+    /* then put the rest (if any) at the beginning of the buffer */
+    MEMCPYFUNCTION(fifo->buffer, buffer + l, number - l);
+
+     fifo->tail = getFifoPtr(fifo->tail,number,fifo);
+
+    return number;
+}
+
+/************************************************************************/
+/* @brief write one byte to the fifo                                    */
+/* This function writes one data byte into the fifo and returns 1 if the*/
+/* operation was successful, 0 otherwise                                */
+/* @return unint8_t														*/
+/************************************************************************/
+uint8_t fifo_write_byte(uint8_t var, fifo_t* fifo)
+{
+	if(fifo_full(fifo))
+		return 0;
+	
+	fifo->buffer[fifo->tail] = var;
+	fifo->tail = getFifoPtr(fifo->tail,1,fifo);
 	return 1;
 }
 
-/*
+/**
  * @brief write n objects in fifo
  *
  * Write arbitrary number of objects into fifo.
  *
  * Returns the number of objects successfully written.
  */
-uint32_t fifo_write(void* buffer, uint32_t number, fifo_t* fifo)
+uint32_t fifo_write(const void* buffer, uint32_t number, fifo_t* fifo, uint32_t objectSize)
 {
-	uint32_t i;
-	uint8_t *memory = (uint8_t *) buffer;
-
-	for (i = 0; i < number; i++)
-	{
-		if (!fifo_write_object(&memory[fifo->objectSize * i], fifo))
-			break;
-	}
-
-	return i;
+    uint32_t writtenBytes = fifo_write_bytes(buffer,fifo,number * objectSize);
+    return writtenBytes/objectSize;
 }
