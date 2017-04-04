@@ -164,11 +164,11 @@ void fifo_delete_bytes(uint32_t number, fifo_t* fifo)
 {
 	if(number == 0)
 		return;
-	
-	number = min(number,fifo_datasize(fifo)); 
-	
+
+	number = min(number,fifo_datasize(fifo));
+
 	fifo->head = getFifoPtr(fifo->head,number,fifo);
-	
+
 	if (fifo->tail == fifo->head)
 		fifo->tail = fifo->head = 0;
 }
@@ -194,7 +194,7 @@ uint32_t fifo_peak_bytes(uint8_t *buffer,const fifo_t* fifo, uint32_t number)
      * then get the rest (if any) from the beginning of the buffer
      */
     MEMCPYFUNCTION(buffer + l, fifo->buffer, number - l);
-	
+
 	return number;
 }
 
@@ -208,11 +208,12 @@ uint32_t fifo_peak_bytes(uint8_t *buffer,const fifo_t* fifo, uint32_t number)
  */
 uint32_t fifo_peak_bytes_offset(uint8_t *buffer, uint32_t offset, const fifo_t* fifo, uint32_t number)
 {
+    fifo_t tmpFifo;
     uint32_t datasize = fifo_datasize(fifo);
     if(datasize < (offset + number))
         return 0;
-    fifo_t tmpFifo = *fifo;
-    tmpFifo.head = getFifoPtr(tmpFifo.head,offset,&tmpfifo);
+    tmpFifo = *fifo;
+    tmpFifo.head = getFifoPtr(tmpFifo.head,offset,&tmpFifo);
     return fifo_peak_bytes(buffer,&tmpFifo,number);
 }
 
@@ -250,7 +251,7 @@ uint8_t fifo_read_byte(uint8_t* var, fifo_t* fifo)
 {
 	if(fifo_empty(fifo))
 		return 0;
-	
+
 	*var = fifo->buffer[fifo->head];
 	fifo->head = getFifoPtr(fifo->head,1,fifo);
 	return 1;
@@ -289,7 +290,7 @@ uint32_t fifo_read(void *buffer, uint32_t number, fifo_t* fifo, uint32_t objectS
 uint32_t fifo_write_bytes(const uint8_t* buffer, fifo_t* fifo, uint32_t number)
 {
     unsigned int l;
-	
+
 	if(fifo_full(fifo))
 		return 0;
 
@@ -317,7 +318,7 @@ uint8_t fifo_write_byte(uint8_t var, fifo_t* fifo)
 {
 	if(fifo_full(fifo))
 		return 0;
-	
+
 	fifo->buffer[fifo->tail] = var;
 	fifo->tail = getFifoPtr(fifo->tail,1,fifo);
 	return 1;
