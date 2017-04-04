@@ -10,6 +10,11 @@
 #ifndef LIBFIFO_H_
 #define LIBFIFO_H_
 
+ #ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ===== INCLUDES =====
 #include <stdint.h>
 #include <string.h>
@@ -52,5 +57,8 @@ uint32_t fifo_write_bytes(const uint8_t* buffer, fifo_t* fifo, uint32_t number);
 uint8_t fifo_write_byte(uint8_t var, fifo_t* fifo);
 uint32_t fifo_write(const void* buffer, uint32_t number, fifo_t* fifo, uint32_t objectSize);
 
+ #ifdef __cplusplus
+}
+#endif
 
 #endif
